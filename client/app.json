@@ -1,0 +1,58 @@
+{
+    "expo": {
+        "name": "FarmAlam",
+        "slug": "FarmAlam",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "icon": "./assets/images/logo.png",
+        "scheme": "farmalam",
+        "userInterfaceStyle": "automatic",
+        "newArchEnabled": true,
+        "fonts": [
+            {
+                "fontFamily": "ZenDots",
+                "fonts": ["./assets/fonts/ZenDots-Regular.ttf"]
+            },
+            {
+                "fontFamily": "Outfit",
+                "fonts": ["./assets/fonts/Outfit-Regular.ttf"]
+            },
+            {
+                "fontFamily": "CalSans",
+                "fonts": ["./assets/fonts/CalSans-Regular.ttf"]
+            }
+        ],
+        "ios": {
+            "supportsTablet": true
+        },
+        "android": {
+            "adaptiveIcon": {
+                "foregroundImage": "./assets/images/logo.png"
+            },
+
+            "edgeToEdgeEnabled": true,
+                        "usesCleartextTraffic": true,
+  "networkSecurityConfig": "@xml/network_security_config"
+},
+      
+        "web": {
+            "bundler": "metro",
+            "output": "static",
+            "favicon": "./assets/images/logo.png"
+        },
+        "plugins": [
+            "expo-router",
+            [
+                "expo-splash-screen",
+                {
+                    "image": "./assets/images/logo.png",
+                    "imageWidth": 200,
+                    "resizeMode": "contain"
+                }
+            ]
+        ],
+        "experiments": {
+            "typedRoutes": true
+        }
+    }
+}
