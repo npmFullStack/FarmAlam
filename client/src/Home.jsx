@@ -7,22 +7,20 @@ import {
     Image,
     StyleSheet,
     ImageBackground,
-    Alert,
     ActivityIndicator,
-    Platform
+    Platform,
+    ScrollView
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
 import { useNavigation } from "@react-navigation/native";
 import useFonts from "./hooks/useFonts";
-import axios from "axios";
+import BottomNav from "./components/BottomNav";
 
 const Home = () => {
     const navigation = useNavigation();
     const fontsLoaded = useFonts();
     const [fontsReady, setFontsReady] = useState(false);
 
-    // Additional delay to ensure fonts are fully loaded
     useEffect(() => {
         if (fontsLoaded) {
             const timer = setTimeout(() => {
@@ -31,60 +29,6 @@ const Home = () => {
             return () => clearTimeout(timer);
         }
     }, [fontsLoaded]);
-
-    const handleImagePicker = () => {
-        Alert.alert(
-            "Upload Photo",
-            "Choose an option",
-            [
-                {
-                    text: "Camera",
-                    onPress: () => pickImage("camera")
-                },
-                {
-                    text: "Gallery",
-                    onPress: () => pickImage("gallery")
-                },
-                {
-                    text: "Cancel",
-                    style: "cancel"
-                }
-            ],
-            { cancelable: true }
-        );
-    };
-
-    const pickImage = async source => {
-        let result;
-        try {
-            if (source === "camera") {
-                await ImagePicker.requestCameraPermissionsAsync();
-                result = await ImagePicker.launchCameraAsync({
-                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                    allowsEditing: true,
-                    aspect: [4, 3],
-                    quality: 1
-                });
-            } else {
-                await ImagePicker.requestMediaLibraryPermissionsAsync();
-                result = await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                    allowsEditing: true,
-                    aspect: [4, 3],
-                    quality: 1
-                });
-            }
-
-            if (!result.canceled) {
-                navigation.navigate("Results", {
-                    imageUri: result.assets[0].uri
-                });
-            }
-        } catch (error) {
-            console.log("Image picker error:", error);
-            Alert.alert("Error", "Failed to pick image");
-        }
-    };
 
     if (!fontsReady) {
         return (
@@ -104,39 +48,48 @@ const Home = () => {
                         style={styles.logo}
                     />
                     <Text style={styles.logoText}>
-                        <Text style={styles.farmText}>Farm</Text>
-                        <Text style={styles.alamText}>Alam</Text>
+                        <Text style={styles.lutongText}>Lutong</Text>
+                        <Text style={styles.bahayText}>Bahay</Text>
                     </Text>
                 </View>
             </View>
 
-            {/* Content with Background Image */}
-            <ImageBackground
-                source={require("../assets/images/bg.png")}
-                style={styles.backgroundImage}
-                resizeMode="cover"
-                renderToHardwareTextureAndroid={true}
-            >
-                <View style={styles.content}>
-                    <Text style={styles.heading}>Plant Disease Detection</Text>
-                    <Text style={styles.subHeading}>
-                        Upload a photo of your crop or plant to detect diseases
-                        and get recommended treatments.
-                    </Text>
+            {/* Scrollable Content */}
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
+                {/* Content with Background Image */}
+                <ImageBackground
+                    source={require("../assets/images/bg.png")}
+                    style={styles.backgroundImage}
+                    resizeMode="cover"
+                >
+                    <View style={styles.content}>
+                        <Text style={styles.heading}>
+                            Recipe Management System
+                        </Text>
+                        <Text style={styles.subHeading}>
+                            Discover, save, and manage your favorite recipes all
+                            in one place.
+                        </Text>
 
-                    <TouchableOpacity
-                        style={styles.uploadButton}
-                        onPress={handleImagePicker}
-                    >
-                        <MaterialIcons
-                            name="cloud-upload"
-                            size={24}
-                            color="white"
-                        />
-                        <Text style={styles.buttonText}>Upload</Text>
-                    </TouchableOpacity>
-                </View>
-            </ImageBackground>
+                        <TouchableOpacity
+                            style={styles.browseButton}
+                            onPress={() => navigation.navigate("SearchRecipe")}
+                        >
+                            <MaterialIcons
+                                name="search"
+                                size={24}
+                                color="white"
+                            />
+                            <Text style={styles.buttonText}>
+                                Browse Recipes
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </ImageBackground>
+            </ScrollView>
+
+            {/* Bottom Navigation */}
+            <BottomNav />
         </SafeAreaView>
     );
 };
@@ -151,8 +104,10 @@ const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
         backgroundColor: "#fff",
-        marginTop: Platform.OS === "android" ? 0 : 20,
         marginTop: 20
+    },
+    scrollContainer: {
+        flexGrow: 1
     },
     header: {
         flexDirection: "row",
@@ -176,20 +131,21 @@ const styles = StyleSheet.create({
     },
     logoText: {
         fontSize: 20,
-        fontFamily: "ZenDots-Regular"
+        fontFamily: "Galindo-Regular"
     },
-    farmText: {
-        color: "#2C7120"
+    lutongText: {
+        color: "#E25822"
     },
-    alamText: {
+    bahayText: {
         color: "#333"
     },
     backgroundImage: {
         flex: 1,
-        justifyContent: "center"
+        justifyContent: "center",
+        minHeight: 500 // Adjust as needed
     },
     content: {
-        backgroundColor: "rgba(255,255,255,0.6)",
+        backgroundColor: "rgba(255,255,255,0.8)",
         padding: 20,
         margin: 20,
         borderRadius: 10
@@ -198,8 +154,8 @@ const styles = StyleSheet.create({
         fontSize: 24,
         marginBottom: 20,
         textAlign: "center",
-        fontFamily: "ZenDots-Regular",
-        color: "#2C7120",
+        fontFamily: "Galindo-Regular",
+        color: "#E25822",
         ...Platform.select({
             android: {
                 includeFontPadding: false
@@ -215,9 +171,9 @@ const styles = StyleSheet.create({
         fontFamily: "Outfit-Variable",
         fontWeight: 500
     },
-    uploadButton: {
+    browseButton: {
         flexDirection: "row",
-        backgroundColor: "#59D102",
+        backgroundColor: "#E25822",
         padding: 15,
         borderRadius: 50,
         alignItems: "center",
@@ -228,8 +184,8 @@ const styles = StyleSheet.create({
         color: "white",
         marginLeft: 10,
         fontSize: 18,
-        fontWeight: "800",
-        fontFamily: "CalSans-Regular"
+        fontFamily: "Galindo-Regular",
+        fontWeight: 800
     }
 });
 

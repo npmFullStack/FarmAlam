@@ -3,7 +3,9 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import LoadingScreen from "./LoadingScreen";
 import Home from "./Home";
-import Results from "./Results";
+import CookBook from "./CookBook";
+import SearchRecipe from "./SearchRecipe";
+import Account from "./Account";
 import * as Font from "expo-font";
 import { ActivityIndicator, View } from "react-native";
 
@@ -15,7 +17,7 @@ export default function App() {
     useEffect(() => {
         async function loadFonts() {
             await Font.loadAsync({
-                "ZenDots-Regular": require("../assets/fonts/ZenDots-Regular.ttf"),
+                "Galindo-Regular": require("../assets/fonts/Galindo-Regular.ttf"),
                 "Outfit-Variable": require("../assets/fonts/Outfit-Regular.ttf"),
                 "CalSans-Regular": require("../assets/fonts/CalSans-Regular.ttf")
             });
@@ -27,13 +29,7 @@ export default function App() {
 
     if (!fontsLoaded) {
         return (
-            <View
-                style={{
-                    flex: 1,
-                    justifyContent: "center",
-                    alignItems: "center"
-                }}
-            >
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
                 <ActivityIndicator size="large" />
             </View>
         );
@@ -47,7 +43,9 @@ export default function App() {
             >
                 <Stack.Screen name="Loading" component={LoadingScreen} />
                 <Stack.Screen name="Home" component={Home} />
-                <Stack.Screen name="Results" component={Results} />
+                <Stack.Screen name="CookBook" component={CookBook} />
+                <Stack.Screen name="SearchRecipe" component={SearchRecipe} />
+                <Stack.Screen name="Account" component={Account} />
             </Stack.Navigator>
         </NavigationContainer>
     );

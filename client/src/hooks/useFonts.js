@@ -8,7 +8,7 @@ export default function useFonts() {
     useEffect(() => {
         async function loadFonts() {
             await Font.loadAsync({
-                "ZenDots-Regular": require("../../assets/fonts/ZenDots-Regular.ttf"),
+                "Galindo-Regular": require("../../assets/fonts/Galindo-Regular.ttf"),
                 "Outfit-Variable": require("../../assets/fonts/Outfit-Regular.ttf"),
                 "CalSans-Regular": require("../../assets/fonts/CalSans-Regular.ttf")
             });

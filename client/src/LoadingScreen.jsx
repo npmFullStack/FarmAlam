@@ -20,8 +20,8 @@ const LoadingScreen = ({ navigation }) => {
                     <View style={styles.logoContainer}>
                         <Image source={logo} style={styles.logo} />
                         <Text style={styles.title}>
-                            <Text style={styles.farmText}>Farm</Text>
-                            <Text style={styles.alamText}>Alam</Text>
+                            <Text style={styles.lutongText}>Lutong</Text>
+                            <Text style={styles.bahayText}>Bahay</Text>
                         </Text>
                     </View>
                 </View>
@@ -69,12 +69,12 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 32,
         textAlign: "center",
-        fontFamily: "ZenDots-Regular"
+        fontFamily: "Galindo-Regular"
     },
-    farmText: {
-        color: "#2C7120"
+    lutongText: {
+        color: "#E25822"
     },
-    alamText: {
+    bahayText: {
         color: "#333"
     },
     animation: {
