@@ -34,4 +34,14 @@ class Recipe extends Model
     {
         return $this->hasMany(Step::class)->orderBy('order');
     }
+    
+    public function ratings()
+{
+    return $this->hasMany(Rating::class);
+}
+
+public function averageRating()
+{
+    return $this->ratings()->avg('rating');
+}
 }

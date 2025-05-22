@@ -10,12 +10,18 @@ use Illuminate\Support\Facades\Validator;
 class RecipeController extends Controller
 {
  public function index()
- {
-  $recipes = Recipe::with("steps")
-   ->where("user_id", auth()->id())
-   ->get();
-  return response()->json($recipes);
- }
+{
+    $recipes = Recipe::with(['user', 'ratings'])
+        ->withAvg('ratings as ratings_avg_rating', 'rating')
+        ->get()
+        ->map(function ($recipe) {
+            // Ensure ratings_avg_rating is always a float
+            $recipe->ratings_avg_rating = (float) $recipe->ratings_avg_rating;
+            return $recipe;
+        });
+    
+    return response()->json($recipes);
+}
 
  public function store(Request $request)
  {
@@ -76,13 +82,30 @@ class RecipeController extends Controller
 
  public function show(Recipe $recipe)
  {
-  if ($recipe->user_id !== auth()->id()) {
-   return response()->json(["message" => "Unauthorized"], 403);
+  try {
+   $recipe->load([
+    "steps" => function ($query) {
+     $query->orderBy("order");
+    },
+    "user",
+   ]);
+
+   $averageRating = $recipe->ratings()->avg("rating");
+
+   return response()->json([
+    ...$recipe->toArray(),
+    "average_rating" => (float) $averageRating,
+   ]);
+  } catch (\Exception $e) {
+   return response()->json(
+    [
+     "message" => "Failed to fetch recipe",
+     "error" => $e->getMessage(),
+    ],
+    500,
+   );
   }
-
-  return response()->json($recipe->load("steps"));
  }
-
  public function update(Request $request, Recipe $recipe)
  {
   if ($recipe->user_id !== auth()->id()) {

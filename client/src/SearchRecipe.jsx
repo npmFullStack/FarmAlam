@@ -30,6 +30,7 @@ const SearchRecipe = () => {
     const [selectedCategory, setSelectedCategory] = useState(null);
 
     const categories = [
+        "all",
         "appetizer",
         "main course",
         "dessert",
@@ -52,8 +53,15 @@ const SearchRecipe = () => {
                     }
                 }
             );
-            setRecipes(response.data);
-            setFilteredRecipes(response.data);
+
+            // Ensure each recipe has ratings_avg_rating
+            const recipesWithRatings = response.data.map(recipe => ({
+                ...recipe,
+                ratings_avg_rating: recipe.ratings_avg_rating || 0
+            }));
+
+            setRecipes(recipesWithRatings);
+            setFilteredRecipes(recipesWithRatings);
         } catch (error) {
             console.error("Error fetching recipes:", error);
             Alert.alert("Error", "Failed to fetch recipes. Please try again.");
@@ -75,7 +83,7 @@ const SearchRecipe = () => {
         }
 
         // Apply category filter
-        if (selectedCategory) {
+        if (selectedCategory && selectedCategory !== "all") {
             results = results.filter(
                 recipe => recipe.category === selectedCategory
             );
@@ -83,8 +91,12 @@ const SearchRecipe = () => {
 
         // Apply tab filter (you can add more logic here for different tabs)
         if (activeTab === "popular") {
-            // For demo, we'll just sort by name
-            results.sort((a, b) => a.name.localeCompare(b.name));
+            // Sort by average rating (highest first) with null safety
+            results.sort((a, b) => {
+                const ratingA = a.ratings_avg_rating || 0;
+                const ratingB = b.ratings_avg_rating || 0;
+                return ratingB - ratingA;
+            });
         } else {
             // Latest - sort by ID (assuming higher ID means newer)
             results.sort((a, b) => b.id - a.id);
@@ -116,69 +128,42 @@ const SearchRecipe = () => {
     };
 
     // Render star rating
-    const renderStars = rating => {
-        const stars = [];
-        const fullStars = Math.floor(rating);
-        const hasHalfStar = rating % 1 !== 0;
+    const renderStars = (rating) => {
+    const safeRating = rating || 0;
+    return [1, 2, 3, 4, 5].map((star) => (
+        <FontAwesome
+            key={star}
+            name={star <= safeRating ? "star" : "star-o"}
+            size={12}
+            color="#FFD700"
+        />
+    ));
+};
 
-        for (let i = 1; i <= 5; i++) {
-            if (i <= fullStars) {
-                stars.push(
-                    <FontAwesome
-                        key={i}
-                        name="star"
-                        size={16}
-                        color="#FFD700"
-                    />
-                );
-            } else if (i === fullStars + 1 && hasHalfStar) {
-                stars.push(
-                    <FontAwesome
-                        key={i}
-                        name="star-half-full"
-                        size={16}
-                        color="#FFD700"
-                    />
-                );
-            } else {
-                stars.push(
-                    <FontAwesome
-                        key={i}
-                        name="star-o"
-                        size={16}
-                        color="#FFD700"
-                    />
-                );
-            }
-        }
-        return stars;
-    };
-
-    // Render servings icon based on count
-    const renderServingsIcon = servings => {
-        switch (servings) {
-            case "1":
-                return <MaterialIcons name="person" size={16} color="#666" />;
-            case "2":
-                return (
-                    <MaterialIcons
-                        name="people-outline"
-                        size={16}
-                        color="#666"
-                    />
-                );
-            case "4":
-                return <MaterialIcons name="group" size={16} color="#666" />;
-            case "8+":
-                return <MaterialIcons name="groups" size={16} color="#666" />;
-            default:
-                return <MaterialIcons name="person" size={16} color="#666" />;
-        }
+    // Get category background color
+    const getCategoryColor = category => {
+        const colors = {
+            appetizer: "#FF9A76",
+            "main course": "#FF6B6B",
+            dessert: "#FFB677",
+            salad: "#A8E6CF",
+            soup: "#6EC6CA",
+            "side dish": "#FFD3B6",
+            breakfast: "#FFAAA5",
+            beverage: "#DCEDC1"
+        };
+        return colors[category] || "#E25822";
     };
 
     // Render recipe card
     const renderRecipeCard = ({ item }) => {
-        const rating = generateRandomRating();
+        // Handle undefined or null ratings
+        const averageRating = item.ratings_avg_rating || 0;
+        const displayRating =
+            typeof averageRating === "number"
+                ? averageRating.toFixed(1)
+                : "0.0";
+        const roundedRating = Math.round(averageRating);
 
         return (
             <TouchableOpacity
@@ -210,16 +195,23 @@ const SearchRecipe = () => {
                     <Text style={styles.recipeName} numberOfLines={1}>
                         {item.name}
                     </Text>
-                    <Text style={styles.recipeCategory}>
-                        {item.category.charAt(0).toUpperCase() +
-                            item.category.slice(1)}
-                    </Text>
-                    <View style={styles.timeContainer}>
+                    <View
+                        style={[
+                            styles.recipeCategoryContainer,
+                            { backgroundColor: getCategoryColor(item.category) }
+                        ]}
+                    >
+                        <Text style={styles.recipeCategory}>
+                            {item.category.charAt(0).toUpperCase() +
+                                item.category.slice(1)}
+                        </Text>
+                    </View>
+                    <View style={styles.timeRow}>
                         <View style={styles.timeItem}>
                             <MaterialIcons
                                 name="timer"
                                 size={12}
-                                color="#fff"
+                                color="#666"
                             />
                             <Text style={styles.timeText}>
                                 Prep: {item.prep_time}m
@@ -229,24 +221,29 @@ const SearchRecipe = () => {
                             <MaterialIcons
                                 name="timer"
                                 size={12}
-                                color="#fff"
+                                color="#666"
                             />
                             <Text style={styles.timeText}>
                                 Cook: {item.cook_time}m
                             </Text>
                         </View>
+                        <View style={styles.timeItem}>
+                            <MaterialIcons
+                                name="people"
+                                size={12}
+                                color="#666"
+                            />
+                            <Text style={styles.timeText}>{item.servings}</Text>
+                        </View>
                     </View>
                     <View style={styles.bottomRow}>
-                        <View style={styles.servingsContainer}>
-                            {renderServingsIcon(item.servings)}
-                            <Text style={styles.servingsText}>
-                                {item.servings}
-                            </Text>
-                        </View>
+                        <Text style={styles.usernameText}>
+                            @{item.user?.username || "unknown"}
+                        </Text>
                         <View style={styles.ratingContainer}>
-                            {renderStars(rating)}
+                            {renderStars(roundedRating)}
                             <Text style={styles.ratingText}>
-                                {rating.toFixed(1)}
+                                {displayRating}
                             </Text>
                         </View>
                     </View>
@@ -289,19 +286,37 @@ const SearchRecipe = () => {
                             onChangeText={setSearchQuery}
                             returnKeyType="search"
                         />
+                        {selectedCategory && (
+                            <View style={styles.selectedCategoryTag}>
+                                <Text style={styles.selectedCategoryTagText}>
+                                    {selectedCategory.charAt(0).toUpperCase() +
+                                        selectedCategory.slice(1)}
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={() => setSelectedCategory(null)}
+                                    style={styles.removeCategoryButton}
+                                >
+                                    <MaterialIcons
+                                        name="close"
+                                        size={16}
+                                        color="#fff"
+                                    />
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                        <TouchableOpacity
+                            style={styles.filterButton}
+                            onPress={() =>
+                                setShowCategoryFilter(!showCategoryFilter)
+                            }
+                        >
+                            <MaterialIcons
+                                name="filter-list"
+                                size={24}
+                                color="#E25822"
+                            />
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        style={styles.filterButton}
-                        onPress={() =>
-                            setShowCategoryFilter(!showCategoryFilter)
-                        }
-                    >
-                        <MaterialIcons
-                            name="filter-list"
-                            size={24}
-                            color="#E25822"
-                        />
-                    </TouchableOpacity>
                 </View>
 
                 {/* Category Filter Dropdown */}
@@ -317,7 +332,9 @@ const SearchRecipe = () => {
                                     style={[
                                         styles.categoryButton,
                                         selectedCategory === category &&
-                                            styles.selectedCategoryButton
+                                            styles.selectedCategoryButton,
+                                        category === "all" &&
+                                            styles.allCategoryButton
                                     ]}
                                     onPress={() => {
                                         setSelectedCategory(
@@ -325,17 +342,22 @@ const SearchRecipe = () => {
                                                 ? null
                                                 : category
                                         );
+                                        setShowCategoryFilter(false);
                                     }}
                                 >
                                     <Text
                                         style={[
                                             styles.categoryText,
                                             selectedCategory === category &&
-                                                styles.selectedCategoryText
+                                                styles.selectedCategoryText,
+                                            category === "all" &&
+                                                styles.allCategoryText
                                         ]}
                                     >
-                                        {category.charAt(0).toUpperCase() +
-                                            category.slice(1)}
+                                        {category === "all"
+                                            ? "All"
+                                            : category.charAt(0).toUpperCase() +
+                                              category.slice(1)}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -447,7 +469,8 @@ const styles = StyleSheet.create({
         marginTop: 20,
         color: "#666",
         fontSize: 16,
-        textAlign: "center"
+        textAlign: "center",
+        fontFamily: "Outfit-Variable"
     },
     noDataImage: {
         width: 200,
@@ -475,30 +498,45 @@ const styles = StyleSheet.create({
         width: 24
     },
     searchContainer: {
-        flexDirection: "row",
-        alignItems: "center",
         paddingHorizontal: 15,
         paddingVertical: 10
     },
     searchInputContainer: {
-        flex: 1,
         flexDirection: "row",
         alignItems: "center",
         backgroundColor: "#f5f5f5",
         borderRadius: 8,
-        paddingHorizontal: 10
+        paddingHorizontal: 10,
+        height: 40
     },
     searchIcon: {
         marginRight: 8
     },
     searchInput: {
         flex: 1,
-        height: 40,
-        fontSize: 16
+        fontSize: 16,
+        fontFamily: "Outfit-Variable"
     },
     filterButton: {
-        marginLeft: 10,
+        marginLeft: "auto",
         padding: 8
+    },
+    selectedCategoryTag: {
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#E25822",
+        borderRadius: 15,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        marginRight: 8
+    },
+    selectedCategoryTagText: {
+        color: "#fff",
+        fontSize: 12,
+        fontFamily: "Outfit-Variable"
+    },
+    removeCategoryButton: {
+        marginLeft: 4
     },
     categoryFilter: {
         padding: 15,
@@ -509,7 +547,8 @@ const styles = StyleSheet.create({
     filterTitle: {
         fontWeight: "bold",
         marginBottom: 10,
-        color: "#333"
+        color: "#333",
+        fontFamily: "Outfit-Variable"
     },
     categoryContainer: {
         flexDirection: "row",
@@ -523,12 +562,19 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         backgroundColor: "#eee"
     },
+    allCategoryButton: {
+        backgroundColor: "#f0f0f0"
+    },
+    allCategoryText: {
+        fontWeight: "bold"
+    },
     selectedCategoryButton: {
         backgroundColor: "#E25822"
     },
     categoryText: {
         fontSize: 14,
-        color: "#666"
+        color: "#666",
+        fontFamily: "Outfit-Variable"
     },
     selectedCategoryText: {
         color: "#fff"
@@ -549,7 +595,8 @@ const styles = StyleSheet.create({
     },
     tabText: {
         fontSize: 16,
-        color: "#666"
+        color: "#666",
+        fontFamily: "Outfit-Variable"
     },
     activeTabText: {
         color: "#E25822",
@@ -568,15 +615,15 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
-        height: 150 // Fixed height for all cards
+        height: 150
     },
     cardImageContainer: {
         width: "40%",
-        height: "100%" // Image takes full height of card
+        height: "100%"
     },
     cardImage: {
         width: "100%",
-        height: "100%", // Image takes full height
+        height: "100%",
         borderTopLeftRadius: 8,
         borderBottomLeftRadius: 8
     },
@@ -598,45 +645,48 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "bold",
         marginBottom: 5,
-        fontFamily: "Outfit-Variable"
+        fontFamily: "Galindo-Regular"
+    },
+    recipeCategoryContainer: {
+        alignSelf: "flex-start",
+        borderRadius: 12,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        marginBottom: 10
     },
     recipeCategory: {
         fontSize: 12,
-        color: "#E25822",
-        marginBottom: 10,
-        fontWeight: 600
+        color: "#fff",
+        fontWeight: "600",
+        fontFamily: "Outfit-Variable"
     },
-    timeContainer: {
+    timeRow: {
         flexDirection: "row",
+        justifyContent: "space-between",
         marginBottom: 10
     },
     timeItem: {
         flexDirection: "row",
         alignItems: "center",
-        marginRight: 15,
         borderRadius: 16,
-        backgroundColor: "#E25822",
         paddingVertical: 2,
         paddingHorizontal: 5
     },
     timeText: {
         marginLeft: 5,
-        fontSize: 8,
-        color: "#fff"
+        fontSize: 10,
+        color: "#666",
+        fontFamily: "Outfit-Variable"
     },
     bottomRow: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center"
     },
-    servingsContainer: {
-        flexDirection: "row",
-        alignItems: "center"
-    },
-    servingsText: {
-        marginLeft: 5,
-        fontSize: 14,
-        color: "#666"
+    usernameText: {
+        fontSize: 12,
+        color: "#666",
+        fontFamily: "Outfit-Variable"
     },
     ratingContainer: {
         flexDirection: "row",
@@ -644,8 +694,9 @@ const styles = StyleSheet.create({
     },
     ratingText: {
         marginLeft: 5,
-        fontSize: 14,
-        color: "#666"
+        fontSize: 10,
+        color: "#666",
+        fontFamily: "Outfit-Variable"
     },
     floatingButton: {
         position: "absolute",

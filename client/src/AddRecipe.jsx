@@ -19,7 +19,7 @@ import { useNavigation } from "@react-navigation/native";
 import * as ImagePicker from 'expo-image-picker';
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import BottomNav from "./components/BottomNav";
+
 
 const AddRecipe = () => {
     const navigation = useNavigation();
@@ -424,7 +424,6 @@ const AddRecipe = () => {
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>
-            <BottomNav />
         </SafeAreaView>
     );
 };

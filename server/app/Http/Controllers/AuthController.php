@@ -106,4 +106,31 @@ class AuthController extends Controller
    "saved_recipes" => [], // You can add this later when you implement recipe saving
   ]);
  }
+ 
+ 
+ public function updateProfile(Request $request)
+{
+    $request->validate([
+        'first_name' => 'required|string|max:255',
+        'last_name' => 'required|string|max:255',
+        'username' => 'required|string|max:255|unique:users,username,'.$request->user()->id,
+        'email' => 'required|string|email|max:255|unique:users,email,'.$request->user()->id,
+        'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg|max:2048'
+    ]);
+
+    $user = $request->user();
+    $data = $request->only(['first_name', 'last_name', 'username', 'email']);
+
+    if ($request->hasFile('profile_picture')) {
+        $path = $request->file('profile_picture')->store('profile_pictures', 'public');
+        $data['profile_picture'] = $path;
+    }
+
+    $user->update($data);
+
+    return response()->json([
+        'message' => 'Profile updated successfully',
+        'user' => $user
+    ]);
+}
 }
