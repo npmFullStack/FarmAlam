@@ -8,6 +8,7 @@ import SearchRecipe from "./SearchRecipe";
 import Account from "./Account";
 import Auth from "./Auth";
 import AddRecipe from "./AddRecipe";
+import RecipeDetail from "./RecipeDetail";
 import * as Font from "expo-font";
 import { ActivityIndicator, View } from "react-native";
 
@@ -54,8 +55,9 @@ export default function App() {
                 <Stack.Screen name="CookBook" component={CookBook} />
                 <Stack.Screen name="SearchRecipe" component={SearchRecipe} />
                 <Stack.Screen name="Account" component={Account} />
-                                <Stack.Screen name="Auth" component={Auth} />
-                                                <Stack.Screen name="AddRecipe" component={AddRecipe} />
+                <Stack.Screen name="Auth" component={Auth} />
+                <Stack.Screen name="AddRecipe" component={AddRecipe} />
+                <Stack.Screen name="RecipeDetail" component={RecipeDetail} />
             </Stack.Navigator>
         </NavigationContainer>
     );
