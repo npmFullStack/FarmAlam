@@ -32,9 +32,9 @@ const Home = () => {
 
     if (!fontsReady) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" />
-            </View>
+            <SafeAreaView style={styles.loadingContainer} edges={["top"]}>
+                <ActivityIndicator size="large" color="#E25822" />
+            </SafeAreaView>
         );
     }
 
@@ -64,11 +64,11 @@ const Home = () => {
                 >
                     <View style={styles.content}>
                         <Text style={styles.heading}>
-                            Recipe Management System
+                            Gutom Na? Tara, Lutooooo!
                         </Text>
                         <Text style={styles.subHeading}>
-                            Discover, save, and manage your favorite recipes all
-                            in one place.
+                            From adobo to sinigang, find all your paborito
+                            recipes here!
                         </Text>
 
                         <TouchableOpacity
