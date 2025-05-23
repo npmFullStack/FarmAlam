@@ -45,19 +45,17 @@ const SearchRecipe = () => {
     // Fetch recipes from API
     const fetchRecipes = async () => {
         try {
-            // Try to get token (but don't require it)
             const token = await AsyncStorage.getItem("token");
-            const headers = token ? { Authorization: `Bearer ${token}` } : {};
-
             const [recipesResponse, savedResponse] = await Promise.all([
-                axios.get("http://127.0.0.1:8000/api/recipes", { headers }),
-                token
-                    ? axios.get("http://127.0.0.1:8000/api/cookbook", {
-                          headers
-                      })
-                    : { data: [] }
+                axios.get("http://127.0.0.1:8000/api/recipes", {
+                    headers: { Authorization: `Bearer ${token}` }
+                }),
+                axios.get("http://127.0.0.1:8000/api/cookbook", {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
             ]);
 
+            // Ensure each recipe has ratings_avg_rating
             const recipesWithRatings = recipesResponse.data.map(recipe => ({
                 ...recipe,
                 ratings_avg_rating: recipe.ratings_avg_rating || 0
@@ -65,12 +63,10 @@ const SearchRecipe = () => {
 
             setRecipes(recipesWithRatings);
             setFilteredRecipes(recipesWithRatings);
-            setSavedRecipes(
-                token ? savedResponse.data.map(item => item.recipe_id) : []
-            );
+            setSavedRecipes(savedResponse.data.map(item => item.recipe_id));
         } catch (error) {
             console.error("Error fetching data:", error);
-            Alert.alert("Error", "Failed to fetch recipes. Please try again.");
+            Alert.alert("Error", "Failed to fetch data. Please try again.");
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -81,18 +77,14 @@ const SearchRecipe = () => {
     const toggleSaveRecipe = async recipeId => {
         try {
             const token = await AsyncStorage.getItem("token");
-            if (!token) {
-                Alert.alert("Login Required", "Please login to save recipes.");
-                navigation.navigate("Auth");
-                return;
-            }
-
             const isSaved = savedRecipes.includes(recipeId);
 
             if (isSaved) {
                 await axios.delete(
                     `http://127.0.0.1:8000/api/cookbook/${recipeId}`,
-                    { headers: { Authorization: `Bearer ${token}` } }
+                    {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }
                 );
                 setSavedRecipes(savedRecipes.filter(id => id !== recipeId));
             } else {
@@ -315,6 +307,7 @@ const SearchRecipe = () => {
         );
     };
 
+    // ... rest of your component code remains the same ...
     return (
         <SafeAreaView style={styles.safeArea} edges={["top"]}>
             <View style={styles.container}>
@@ -496,18 +489,7 @@ const SearchRecipe = () => {
                 {/* Floating Add Button */}
                 <TouchableOpacity
                     style={styles.floatingButton}
-                    onPress={async () => {
-                        const token = await AsyncStorage.getItem("token");
-                        if (!token) {
-                            Alert.alert(
-                                "Signup Required",
-                                "Please sign up to add recipes."
-                            );
-                            navigation.navigate("Auth");
-                        } else {
-                            navigation.navigate("AddRecipe");
-                        }
-                    }}
+                    onPress={() => navigation.navigate("AddRecipe")}
                 >
                     <MaterialIcons name="add" size={28} color="white" />
                 </TouchableOpacity>
@@ -518,6 +500,8 @@ const SearchRecipe = () => {
         </SafeAreaView>
     );
 };
+
+
 
 const styles = StyleSheet.create({
     safeArea: {
@@ -758,14 +742,14 @@ const styles = StyleSheet.create({
         alignItems: "center"
     },
     usernameText: {
-        fontSize: 8,
+        fontSize: 12,
         color: "#666",
         fontFamily: "Outfit-Variable"
     },
     bookmarkButton: {
         position: "absolute",
-        top: 5,
-        left: 5,
+        top: 10,
+        right: 10,
         backgroundColor: "rgba(0,0,0,0.3)",
         borderRadius: 20,
         padding: 5
@@ -775,12 +759,10 @@ const styles = StyleSheet.create({
         alignItems: "center"
     },
     profileImage: {
-        width: 15,
-        height: 15,
-        borderRadius: 50,
-        marginRight: 2.5,
-        borderWidth: 1,
-        borderColor: "#E25822"
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        marginRight: 5
     },
     ratingContainer: {
         flexDirection: "row",

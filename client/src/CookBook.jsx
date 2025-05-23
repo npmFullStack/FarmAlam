@@ -9,9 +9,11 @@ import {
     ActivityIndicator,
     Alert,
     RefreshControl,
-    SafeAreaView
+    SafeAreaView,
+    FlatList,
+    Platform
 } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, FontAwesome } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -32,27 +34,24 @@ const CookBook = () => {
                 return;
             }
 
-            const response = await axios.get("http://127.0.0.1:8000/api/user", {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            const [userResponse, savedResponse] = await Promise.all([
+                axios.get("http://127.0.0.1:8000/api/user", {
+                    headers: { Authorization: `Bearer ${token}` }
+                }),
+                axios.get("http://127.0.0.1:8000/api/cookbook", {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+            ]);
 
-            setUser(response.data.user);
-            setSavedRecipes(response.data.saved_recipes || []);
+            setUser(userResponse.data.user);
+            setSavedRecipes(savedResponse.data);
         } catch (error) {
-            console.error("Error fetching user:", error);
+            console.error("Error fetching data:", error);
             if (error.response?.status === 401) {
-                // Token is invalid or expired
                 await AsyncStorage.removeItem("token");
                 Alert.alert("Session Expired", "Please log in again", [
                     { text: "OK", onPress: () => navigation.navigate("Auth") }
                 ]);
-            } else {
-                Alert.alert(
-                    "Error",
-                    "Failed to fetch user data. Please try again."
-                );
             }
         } finally {
             setLoading(false);
@@ -73,6 +72,115 @@ const CookBook = () => {
         fetchUserData();
     };
 
+    const renderStars = rating => {
+        const safeRating = rating || 0;
+        return [1, 2, 3, 4, 5].map(star => (
+            <FontAwesome
+                key={star}
+                name={star <= safeRating ? "star" : "star-o"}
+                size={12}
+                color="#FFD700"
+            />
+        ));
+    };
+
+    const renderRecipeCard = ({ item }) => {
+        return (
+            <TouchableOpacity
+                style={styles.recipeCard}
+                onPress={() =>
+                    navigation.navigate("RecipeDetail", {
+                        recipeId: item.id
+                    })
+                }
+            >
+                <View style={styles.cardImageContainer}>
+                    {item.image ? (
+                        <Image
+                            source={{
+                                uri: `http://127.0.0.1:8000/storage/${item.image}`
+                            }}
+                            style={styles.cardImage}
+                            resizeMode="cover"
+                        />
+                    ) : (
+                        <View style={styles.cardImagePlaceholder}>
+                            <MaterialIcons
+                                name="no-food"
+                                size={40}
+                                color="#ccc"
+                            />
+                        </View>
+                    )}
+                </View>
+
+                <View style={styles.cardContent}>
+                    <Text style={styles.recipeName} numberOfLines={1}>
+                        {item.name}
+                    </Text>
+
+                    <View style={styles.recipeCategoryContainer}>
+                        <Text style={styles.recipeCategory}>
+                            {item.category.charAt(0).toUpperCase() +
+                                item.category.slice(1)}
+                        </Text>
+                    </View>
+
+                    <View style={styles.timeRow}>
+                        <View style={styles.timeItem}>
+                            <MaterialIcons
+                                name="timer"
+                                size={12}
+                                color="#666"
+                            />
+                            <Text style={styles.timeText}>
+                                Prep: {item.prep_time}m
+                            </Text>
+                        </View>
+                        <View style={styles.timeItem}>
+                            <MaterialIcons
+                                name="timer"
+                                size={12}
+                                color="#666"
+                            />
+                            <Text style={styles.timeText}>
+                                Cook: {item.cook_time}m
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.bottomRow}>
+                        <View style={styles.userInfo}>
+                            {item.user?.profile_picture ? (
+                                <Image
+                                    source={{
+                                        uri: `http://127.0.0.1:8000/storage/${item.user.profile_picture}`
+                                    }}
+                                    style={styles.profileImage}
+                                />
+                            ) : (
+                                <Image
+                                    source={require("../assets/images/default_profile.png")}
+                                    style={styles.profileImage}
+                                />
+                            )}
+                            <Text style={styles.usernameText}>
+                                {item.user?.username || "unknown"}
+                            </Text>
+                        </View>
+
+                        <View style={styles.ratingContainer}>
+                            {renderStars(Math.round(item.average_rating || 0))}
+                            <Text style={styles.ratingText}>
+                                {(item.average_rating || 0).toFixed(1)}
+                            </Text>
+                        </View>
+                    </View>
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
     if (loading) {
         return (
             <SafeAreaView style={styles.loadingContainer} edges={["top"]}>
@@ -84,6 +192,20 @@ const CookBook = () => {
     if (!user) {
         return (
             <SafeAreaView style={styles.safeArea} edges={["top"]}>
+                <View style={styles.topHeader}>
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        style={styles.backButton}
+                    >
+                        <MaterialIcons
+                            name="arrow-back"
+                            size={24}
+                            color="#E25822"
+                        />
+                    </TouchableOpacity>
+                    <Text style={styles.headerTitle}>Search Recipe</Text>
+                    <View style={styles.headerRightPlaceholder} />
+                </View>
                 <ScrollView contentContainerStyle={styles.scrollContainer}>
                     <View style={styles.content}>
                         <MaterialIcons
@@ -124,12 +246,15 @@ const CookBook = () => {
                             color="#E25822"
                         />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>CookBook</Text>
+                    <Text style={styles.headerTitle}>Search Recipe</Text>
                     <View style={styles.headerRightPlaceholder} />
                 </View>
 
-                <ScrollView
-                    contentContainerStyle={styles.scrollContainer}
+                <FlatList
+                    data={savedRecipes}
+                    renderItem={renderRecipeCard}
+                    keyExtractor={item => item.id.toString()}
+                    contentContainerStyle={styles.listContent}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -138,81 +263,29 @@ const CookBook = () => {
                             tintColor="#E25822"
                         />
                     }
-                >
-                    <View style={styles.header}>
-                        {user.profile_picture ? (
-                            <Image
-                                source={{ uri: user.profile_picture }}
-                                style={styles.profileImage}
+                    ListEmptyComponent={
+                        <View style={styles.emptyState}>
+                            <MaterialIcons
+                                name="bookmark-border"
+                                size={50}
+                                color="#E25822"
                             />
-                        ) : (
-                            <View style={styles.profilePlaceholder}>
-                                <MaterialIcons
-                                    name="account-circle"
-                                    size={80}
-                                    color="#E25822"
-                                />
-                            </View>
-                        )}
-                        <Text style={styles.welcomeText}>
-                            Welcome, {user.username}!
-                        </Text>
-                    </View>
-
-                    <View style={styles.savedRecipesContainer}>
-                        <Text style={styles.sectionTitle}>
-                            Your Saved Recipes
-                        </Text>
-
-                        {savedRecipes.length > 0 ? (
-                            savedRecipes.map(recipe => (
-                                <TouchableOpacity
-                                    key={recipe.id}
-                                    style={styles.recipeCard}
-                                    onPress={() =>
-                                        navigation.navigate("RecipeDetail", {
-                                            recipe
-                                        })
-                                    }
-                                >
-                                    <Image
-                                        source={{ uri: recipe.image }}
-                                        style={styles.recipeImage}
-                                    />
-                                    <View style={styles.recipeInfo}>
-                                        <Text style={styles.recipeTitle}>
-                                            {recipe.title}
-                                        </Text>
-                                        <Text style={styles.recipeCategory}>
-                                            {recipe.category}
-                                        </Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))
-                        ) : (
-                            <View style={styles.emptyState}>
-                                <MaterialIcons
-                                    name="bookmark-border"
-                                    size={50}
-                                    color="#E25822"
-                                />
-                                <Text style={styles.emptyStateText}>
-                                    No saved recipes yet
+                            <Text style={styles.emptyStateText}>
+                                No saved recipes yet
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.exploreButton}
+                                onPress={() =>
+                                    navigation.navigate("SearchRecipe")
+                                }
+                            >
+                                <Text style={styles.exploreButtonText}>
+                                    Explore Recipes
                                 </Text>
-                                <TouchableOpacity
-                                    style={styles.exploreButton}
-                                    onPress={() =>
-                                        navigation.navigate("SearchRecipe")
-                                    }
-                                >
-                                    <Text style={styles.exploreButtonText}>
-                                        Explore Recipes
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-                    </View>
-                </ScrollView>
+                            </TouchableOpacity>
+                        </View>
+                    }
+                />
                 <BottomNav />
             </View>
         </SafeAreaView>
@@ -222,8 +295,7 @@ const CookBook = () => {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: "#fff",
-        marginTop: 20
+        backgroundColor: "#fff"
     },
     container: {
         flex: 1
@@ -240,7 +312,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         paddingVertical: 15,
         borderBottomWidth: 1,
-        borderBottomColor: "#f0f0f0"
+        borderBottomColor: "#f0f0f0",
+        marginTop: Platform.OS === "android" ? 20 : 0
     },
     backButton: {
         padding: 5
@@ -293,73 +366,116 @@ const styles = StyleSheet.create({
         fontFamily: "Galindo-Regular",
         fontSize: 18
     },
-    header: {
-        alignItems: "center",
-        paddingVertical: 20
-    },
-    profileImage: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        marginBottom: 15
-    },
-    profilePlaceholder: {
-        marginBottom: 15
-    },
-    welcomeText: {
-        fontSize: 20,
-        fontFamily: "Galindo-Regular",
-        color: "#333",
-        marginBottom: 5
-    },
-    savedRecipesContainer: {
-        paddingHorizontal: 20,
-        marginTop: 20,
+    listContent: {
         paddingBottom: 20
     },
-    sectionTitle: {
-        fontSize: 20,
-        fontFamily: "Galindo-Regular",
-        color: "#E25822",
-        marginBottom: 20
-    },
     recipeCard: {
-        flexDirection: "row",
-        backgroundColor: "#f9f9f9",
+        backgroundColor: "#fff",
         borderRadius: 10,
+        marginHorizontal: 15,
         marginBottom: 15,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3
+    },
+    cardImageContainer: {
+        height: 180,
+        borderTopLeftRadius: 10,
+        borderTopRightRadius: 10,
         overflow: "hidden"
     },
-    recipeImage: {
-        width: 100,
-        height: 100
+    cardImage: {
+        width: "100%",
+        height: "100%"
     },
-    recipeInfo: {
-        flex: 1,
-        padding: 15,
-        justifyContent: "center"
+    cardImagePlaceholder: {
+        width: "100%",
+        height: "100%",
+        backgroundColor: "#f5f5f5",
+        justifyContent: "center",
+        alignItems: "center"
     },
-    recipeTitle: {
-        fontSize: 16,
+    cardContent: {
+        padding: 15
+    },
+    recipeName: {
+        fontSize: 18,
         fontFamily: "Galindo-Regular",
         color: "#333",
-        marginBottom: 5
+        marginBottom: 8
+    },
+    recipeCategoryContainer: {
+        backgroundColor: "#E25822",
+        borderRadius: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        alignSelf: "flex-start",
+        marginBottom: 10
     },
     recipeCategory: {
-        fontSize: 14,
+        fontSize: 12,
+        fontFamily: "Outfit-Variable",
+        color: "#fff"
+    },
+    timeRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 15
+    },
+    timeItem: {
+        flexDirection: "row",
+        alignItems: "center"
+    },
+    timeText: {
+        fontSize: 12,
+        fontFamily: "Outfit-Variable",
+        color: "#666",
+        marginLeft: 5
+    },
+    bottomRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center"
+    },
+    userInfo: {
+        flexDirection: "row",
+        alignItems: "center"
+    },
+    profileImage: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        marginRight: 8
+    },
+    usernameText: {
+        fontSize: 12,
         fontFamily: "Outfit-Variable",
         color: "#666"
     },
+    ratingContainer: {
+        flexDirection: "row",
+        alignItems: "center"
+    },
+    ratingText: {
+        fontSize: 12,
+        fontFamily: "Outfit-Variable",
+        color: "#666",
+        marginLeft: 5
+    },
     emptyState: {
         alignItems: "center",
-        paddingVertical: 40
+        paddingVertical: 40,
+        paddingHorizontal: 20
     },
     emptyStateText: {
         fontSize: 16,
         fontFamily: "Outfit-Variable",
         color: "#666",
         marginTop: 10,
-        marginBottom: 20
+        marginBottom: 20,
+        textAlign: "center"
     },
     exploreButton: {
         backgroundColor: "#E25822",

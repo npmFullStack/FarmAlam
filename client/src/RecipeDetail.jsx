@@ -30,39 +30,50 @@ const RecipeDetail = ({ route }) => {
         fetchRecipe();
         fetchUserRating();
     }, [recipeId]);
-
-    const fetchRecipe = async () => {
-        try {
-            const token = await AsyncStorage.getItem("token");
-            const response = await axios.get(
-                `http://127.0.0.1:8000/api/recipes/${recipeId}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        Accept: "application/json"
-                    }
-                }
-            );
-            setRecipe(response.data);
-            setAverageRating(response.data.average_rating || 0);
-        } catch (error) {
-            console.error(
-                "Error fetching recipe:",
-                error.response?.data || error.message
-            );
+    const checkAuth = async (action = "perform this action") => {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) {
             Alert.alert(
-                "Error",
-                error.response?.data?.message ||
-                    "Failed to fetch recipe details."
+                "Authentication Required",
+                `Please sign in to ${action}.`,
+                [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Sign In",
+                        onPress: () => navigation.navigate("Auth")
+                    }
+                ]
             );
-        } finally {
-            setLoading(false);
+            return false;
         }
+        return true;
     };
+    const fetchRecipe = async () => {
+    try {
+        const token = await AsyncStorage.getItem("token");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        
+        const response = await axios.get(
+            `http://127.0.0.1:8000/api/recipes/${recipeId}`,
+            { headers }
+        );
+        setRecipe(response.data);
+        setAverageRating(response.data.average_rating || 0);
+    } catch (error) {
+        Alert.alert("Error", "Failed to fetch recipe details.");
+    } finally {
+        setLoading(false);
+    }
+};
 
     const fetchUserRating = async () => {
         try {
             const token = await AsyncStorage.getItem("token");
+            if (!token) {
+                setUserRating(0);
+                return;
+            }
+
             const response = await axios.get(
                 `http://127.0.0.1:8000/api/ratings/${recipeId}`,
                 {
@@ -74,18 +85,16 @@ const RecipeDetail = ({ route }) => {
             );
             if (response.data.success) {
                 setUserRating(response.data.rating);
-            } else {
-                console.error("Rating fetch failed:", response.data.message);
             }
         } catch (error) {
-            console.error(
-                "Error fetching user rating:",
-                error.response?.data || error.message
-            );
+            console.error("Error fetching user rating:", error);
         }
     };
 
     const handleRating = async rating => {
+        const isAuthenticated = await checkAuth("rate this recipe");
+        if (!isAuthenticated) return;
+
         try {
             setRatingLoading(true);
             const token = await AsyncStorage.getItem("token");
@@ -109,23 +118,15 @@ const RecipeDetail = ({ route }) => {
                 setAverageRating(response.data.average_rating);
                 setRated(true);
                 Alert.alert("Success", "Thank you for rating this recipe!");
-            } else {
-                Alert.alert("Error", response.data.message);
             }
         } catch (error) {
-            console.error(
-                "Error submitting rating:",
-                error.response?.data || error.message
-            );
-            Alert.alert(
-                "Error",
-                error.response?.data?.message || "Failed to submit rating."
-            );
+            Alert.alert("Error", "Failed to submit rating.");
         } finally {
             setRatingLoading(false);
         }
     };
 
+    // In your renderStars function:
     const renderStars = (rating, interactive = false) => {
         return [1, 2, 3, 4, 5].map(star => (
             <TouchableOpacity
@@ -270,6 +271,11 @@ const RecipeDetail = ({ route }) => {
                     <Text style={styles.averageRating}>
                         Average rating: {averageRating.toFixed(1)}/5
                     </Text>
+                    {!userRating && (
+                        <Text style={styles.authPrompt}>
+                            Sign in to rate this recipe
+                        </Text>
+                    )}
                 </View>
             </ScrollView>
 
@@ -323,9 +329,17 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center"
     },
+    authPrompt: {
+        textAlign: "center",
+        fontSize: 14,
+        color: "#E25822",
+        marginTop: 10,
+        fontFamily: "Outfit-Variable"
+    },
     contentContainer: {
         padding: 20
     },
+
     recipeName: {
         fontSize: 24,
         fontWeight: "bold",
