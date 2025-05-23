@@ -15,11 +15,22 @@ class RecipeController extends Controller
         ->withAvg('ratings as ratings_avg_rating', 'rating')
         ->get()
         ->map(function ($recipe) {
-            // Ensure ratings_avg_rating is always a float
             $recipe->ratings_avg_rating = (float) $recipe->ratings_avg_rating;
             return $recipe;
         });
-    
+
+    // Add saved status for authenticated users
+    if ($userId = auth()->id()) {
+        $savedRecipeIds = Cookbook::where('user_id', $userId)
+            ->where('status', 1)
+            ->pluck('recipe_id')
+            ->toArray();
+
+        foreach ($recipes as $recipe) {
+            $recipe->is_saved = in_array($recipe->id, $savedRecipeIds);
+        }
+    }
+
     return response()->json($recipes);
 }
 
@@ -118,7 +129,7 @@ class RecipeController extends Controller
    "category" =>
     "sometimes|required|in:appetizer,main course,dessert,salad,soup,side dish,breakfast,beverage",
    "servings" => "sometimes|required|in:1,2,4,8+",
-   "image" => "nullable|string",
+   "image" => "nullable|sometimes|image|mimes:jpeg,png,jpg,gif|max:2048",
    "prep_time" => "sometimes|required|integer|min:1",
    "cook_time" => "sometimes|required|integer|min:1",
    "steps" => "sometimes|required|array|min:1",
@@ -135,17 +146,36 @@ class RecipeController extends Controller
    );
   }
 
-  $recipe->update(
-   $request->only([
-    "name",
-    "description",
-    "category",
-    "servings",
-    "image",
-    "prep_time",
-    "cook_time",
-   ]),
-  );
+  $updateData = $request->only([
+   "name",
+   "description",
+   "category",
+   "servings",
+   "prep_time",
+   "cook_time",
+  ]);
+
+  // Handle image upload
+  if ($request->hasFile("image")) {
+   // Delete old image if it exists
+   if ($recipe->image) {
+    \Storage::disk("public")->delete($recipe->image);
+   }
+
+   // Store new image
+   $updateData["image"] = $request
+    ->file("image")
+    ->store("recipe_images", "public");
+  } elseif ($request->has("image") && $request->image === null) {
+   // Handle case when image is explicitly set to null (removed)
+   if ($recipe->image) {
+    \Storage::disk("public")->delete($recipe->image);
+   }
+   $updateData["image"] = null;
+  }
+  // Else: keep existing image (don't modify it)
+
+  $recipe->update($updateData);
 
   if ($request->has("steps")) {
    $recipe->steps()->delete();

@@ -10,6 +10,8 @@ import Auth from "./Auth";
 import AddRecipe from "./AddRecipe";
 import RecipeDetail from "./RecipeDetail";
 import ManageProfile from "./ManageProfile";
+import ManageRecipe from "./ManageRecipe";
+import UpdateRecipe from "./UpdateRecipe";
 import * as Font from "expo-font";
 import { ActivityIndicator, View } from "react-native";
 
@@ -60,6 +62,8 @@ export default function App() {
                 <Stack.Screen name="AddRecipe" component={AddRecipe} />
                 <Stack.Screen name="RecipeDetail" component={RecipeDetail} />
                 <Stack.Screen name="ManageProfile" component={ManageProfile} />
+                <Stack.Screen name="ManageRecipe" component={ManageRecipe} />
+                                <Stack.Screen name="UpdateRecipe" component={UpdateRecipe} />
             </Stack.Navigator>
         </NavigationContainer>
     );

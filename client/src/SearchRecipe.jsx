@@ -45,28 +45,45 @@ const SearchRecipe = () => {
     // Fetch recipes from API
     const fetchRecipes = async () => {
         try {
-            // Try to get token (but don't require it)
             const token = await AsyncStorage.getItem("token");
             const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
-            const [recipesResponse, savedResponse] = await Promise.all([
-                axios.get("http://127.0.0.1:8000/api/recipes", { headers }),
-                token
-                    ? axios.get("http://127.0.0.1:8000/api/cookbook", {
-                          headers
-                      })
-                    : { data: [] }
-            ]);
+            // Get saved recipes from AsyncStorage first
+            const savedFromStorage = await AsyncStorage.getItem("savedRecipes");
+            const localSavedRecipes = savedFromStorage
+                ? JSON.parse(savedFromStorage)
+                : [];
 
-            const recipesWithRatings = recipesResponse.data.map(recipe => ({
+            const response = await axios.get(
+                "http://127.0.0.1:8000/api/recipes",
+                { headers }
+            );
+
+            const recipesWithRatings = response.data.map(recipe => ({
                 ...recipe,
-                ratings_avg_rating: recipe.ratings_avg_rating || 0
+                ratings_avg_rating: recipe.ratings_avg_rating || 0,
+                // Merge is_saved from API with local storage
+                is_saved:
+                    recipe.is_saved || localSavedRecipes.includes(recipe.id)
             }));
 
             setRecipes(recipesWithRatings);
             setFilteredRecipes(recipesWithRatings);
-            setSavedRecipes(
-                token ? savedResponse.data.map(item => item.recipe_id) : []
+
+            // Combine saved recipes from API and local storage
+            const apiSavedIds = response.data
+                .filter(recipe => recipe.is_saved)
+                .map(recipe => recipe.id);
+
+            const combinedSavedRecipes = [
+                ...new Set([...apiSavedIds, ...localSavedRecipes])
+            ];
+            setSavedRecipes(combinedSavedRecipes);
+
+            // Update AsyncStorage with the combined list
+            await AsyncStorage.setItem(
+                "savedRecipes",
+                JSON.stringify(combinedSavedRecipes)
             );
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -76,7 +93,10 @@ const SearchRecipe = () => {
             setRefreshing(false);
         }
     };
-
+    // Load saved recipes from AsyncStorage on component mount
+    useEffect(() => {
+        fetchRecipes();
+    }, []);
     // Toggle recipe save status
     const toggleSaveRecipe = async recipeId => {
         try {
@@ -87,22 +107,46 @@ const SearchRecipe = () => {
                 return;
             }
 
-            const isSaved = savedRecipes.includes(recipeId);
+            const isCurrentlySaved = savedRecipes.includes(recipeId);
+            let newSavedRecipes;
 
-            if (isSaved) {
+            if (isCurrentlySaved) {
                 await axios.delete(
                     `http://127.0.0.1:8000/api/cookbook/${recipeId}`,
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
-                setSavedRecipes(savedRecipes.filter(id => id !== recipeId));
+                newSavedRecipes = savedRecipes.filter(id => id !== recipeId);
             } else {
                 await axios.post(
                     "http://127.0.0.1:8000/api/cookbook",
                     { recipe_id: recipeId },
                     { headers: { Authorization: `Bearer ${token}` } }
                 );
-                setSavedRecipes([...savedRecipes, recipeId]);
+                newSavedRecipes = [...savedRecipes, recipeId];
             }
+
+            // Update state and storage
+            setSavedRecipes(newSavedRecipes);
+            await AsyncStorage.setItem(
+                "savedRecipes",
+                JSON.stringify(newSavedRecipes)
+            );
+
+            // Update recipes data
+            setRecipes(prevRecipes =>
+                prevRecipes.map(recipe =>
+                    recipe.id === recipeId
+                        ? { ...recipe, is_saved: !isCurrentlySaved }
+                        : recipe
+                )
+            );
+            setFilteredRecipes(prevRecipes =>
+                prevRecipes.map(recipe =>
+                    recipe.id === recipeId
+                        ? { ...recipe, is_saved: !isCurrentlySaved }
+                        : recipe
+                )
+            );
         } catch (error) {
             console.error("Error toggling save:", error);
             Alert.alert(
@@ -196,7 +240,7 @@ const SearchRecipe = () => {
                 ? averageRating.toFixed(1)
                 : "0.0";
         const roundedRating = Math.round(averageRating);
-        const isSaved = savedRecipes.includes(item.id);
+        const isSaved = savedRecipes.includes(item.id) || item.is_saved;
 
         return (
             <TouchableOpacity
@@ -224,18 +268,17 @@ const SearchRecipe = () => {
                         </View>
                     )}
 
-                    {/* Bookmark Icon */}
                     <TouchableOpacity
                         style={styles.bookmarkButton}
                         onPress={e => {
-                            e.stopPropagation(); // Prevent card press
+                            e.stopPropagation();
                             toggleSaveRecipe(item.id);
                         }}
                     >
                         <MaterialIcons
                             name={isSaved ? "bookmark" : "bookmark-border"}
                             size={24}
-                            color={isSaved ? "#E25822" : "#fff"}
+                            color={isSaved ? "#E25822" : "#ddd"}
                         />
                     </TouchableOpacity>
                 </View>
@@ -677,7 +720,8 @@ const styles = StyleSheet.create({
         fontWeight: "bold"
     },
     listContent: {
-        padding: 15
+        padding: 15,
+        paddingBottom: 100
     },
     recipeCard: {
         flexDirection: "row",
@@ -766,6 +810,7 @@ const styles = StyleSheet.create({
         position: "absolute",
         top: 5,
         left: 5,
+        padding: 5,
         backgroundColor: "rgba(0,0,0,0.3)",
         borderRadius: 20,
         padding: 5

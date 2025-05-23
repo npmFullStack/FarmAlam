@@ -185,7 +185,7 @@ const Account = () => {
                                 <TouchableOpacity
                                     style={styles.actionButton}
                                     onPress={() =>
-                                        navigation.navigate("ManageRecipes")
+                                        navigation.navigate("ManageRecipe")
                                     }
                                 >
                                     <View style={styles.buttonContent}>

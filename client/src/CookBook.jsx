@@ -11,9 +11,10 @@ import {
     RefreshControl,
     SafeAreaView,
     FlatList,
-    Platform
+    Platform,
+    Modal
 } from "react-native";
-import { MaterialIcons, FontAwesome } from "@expo/vector-icons";
+import { MaterialIcons, FontAwesome, Entypo } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -25,6 +26,8 @@ const CookBook = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [savedRecipes, setSavedRecipes] = useState([]);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [selectedRecipe, setSelectedRecipe] = useState(null);
 
     const fetchUserData = async () => {
         try {
@@ -59,6 +62,32 @@ const CookBook = () => {
         }
     };
 
+    const handleDeleteRecipe = async recipeId => {
+        try {
+            const token = await AsyncStorage.getItem("token");
+            await axios.delete(
+                `http://127.0.0.1:8000/api/cookbook/${recipeId}`,
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+
+            setSavedRecipes(prev =>
+                prev.filter(recipe => recipe.id !== recipeId)
+            );
+            setShowDeleteModal(false);
+            setSelectedRecipe(null);
+        } catch (error) {
+            console.error("Error deleting recipe:", error);
+            Alert.alert("Error", "Failed to remove recipe from cookbook");
+        }
+    };
+
+    const confirmDelete = recipe => {
+        setSelectedRecipe(recipe);
+        setShowDeleteModal(true);
+    };
+
     useEffect(() => {
         fetchUserData();
     }, []);
@@ -86,98 +115,124 @@ const CookBook = () => {
 
     const renderRecipeCard = ({ item }) => {
         return (
-            <TouchableOpacity
-                style={styles.recipeCard}
-                onPress={() =>
-                    navigation.navigate("RecipeDetail", {
-                        recipeId: item.id
-                    })
-                }
-            >
-                <View style={styles.cardImageContainer}>
+            <View style={styles.recipeCard}>
+                {/* Left side - Image */}
+                <TouchableOpacity
+                    style={styles.imageContainer}
+                    onPress={() =>
+                        navigation.navigate("RecipeDetail", {
+                            recipeId: item.id
+                        })
+                    }
+                >
                     {item.image ? (
                         <Image
                             source={{
                                 uri: `http://127.0.0.1:8000/storage/${item.image}`
                             }}
-                            style={styles.cardImage}
+                            style={styles.recipeImage}
                             resizeMode="cover"
                         />
                     ) : (
-                        <View style={styles.cardImagePlaceholder}>
+                        <View style={styles.imagePlaceholder}>
                             <MaterialIcons
                                 name="no-food"
-                                size={40}
+                                size={32}
                                 color="#ccc"
                             />
                         </View>
                     )}
-                </View>
+                </TouchableOpacity>
 
-                <View style={styles.cardContent}>
-                    <Text style={styles.recipeName} numberOfLines={1}>
-                        {item.name}
-                    </Text>
+                {/* Right side - Details */}
+                <TouchableOpacity
+                    style={styles.detailsContainer}
+                    onPress={() =>
+                        navigation.navigate("RecipeDetail", {
+                            recipeId: item.id
+                        })
+                    }
+                >
+                    <View style={styles.headerRow}>
+                        <Text style={styles.recipeName} numberOfLines={2}>
+                            {item.name}
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.menuButton}
+                            onPress={() => confirmDelete(item)}
+                        >
+                            <Entypo
+                                name="dots-three-horizontal"
+                                size={18}
+                                color="#666"
+                            />
+                        </TouchableOpacity>
+                    </View>
 
-                    <View style={styles.recipeCategoryContainer}>
-                        <Text style={styles.recipeCategory}>
+                    <View style={styles.categoryContainer}>
+                        <Text style={styles.categoryTag}>
                             {item.category.charAt(0).toUpperCase() +
                                 item.category.slice(1)}
                         </Text>
                     </View>
 
-                    <View style={styles.timeRow}>
+                    <View style={styles.timeContainer}>
                         <View style={styles.timeItem}>
                             <MaterialIcons
                                 name="timer"
-                                size={12}
-                                color="#666"
+                                size={14}
+                                color="#E25822"
                             />
                             <Text style={styles.timeText}>
-                                Prep: {item.prep_time}m
+                                {item.prep_time}m prep
                             </Text>
                         </View>
+                        <View style={styles.timeDivider} />
                         <View style={styles.timeItem}>
                             <MaterialIcons
-                                name="timer"
-                                size={12}
-                                color="#666"
+                                name="local-fire-department"
+                                size={14}
+                                color="#E25822"
                             />
                             <Text style={styles.timeText}>
-                                Cook: {item.cook_time}m
+                                {item.cook_time}m cook
                             </Text>
                         </View>
                     </View>
 
-                    <View style={styles.bottomRow}>
-                        <View style={styles.userInfo}>
+                    <View style={styles.bottomSection}>
+                        <View style={styles.authorInfo}>
                             {item.user?.profile_picture ? (
                                 <Image
                                     source={{
                                         uri: `http://127.0.0.1:8000/storage/${item.user.profile_picture}`
                                     }}
-                                    style={styles.profileImage}
+                                    style={styles.authorImage}
                                 />
                             ) : (
                                 <Image
                                     source={require("../assets/images/default_profile.png")}
-                                    style={styles.profileImage}
+                                    style={styles.authorImage}
                                 />
                             )}
-                            <Text style={styles.usernameText}>
+                            <Text style={styles.authorName}>
                                 {item.user?.username || "unknown"}
                             </Text>
                         </View>
 
-                        <View style={styles.ratingContainer}>
-                            {renderStars(Math.round(item.average_rating || 0))}
-                            <Text style={styles.ratingText}>
+                        <View style={styles.ratingSection}>
+                            <View style={styles.starsContainer}>
+                                {renderStars(
+                                    Math.round(item.average_rating || 0)
+                                )}
+                            </View>
+                            <Text style={styles.ratingValue}>
                                 {(item.average_rating || 0).toFixed(1)}
                             </Text>
                         </View>
                     </View>
-                </View>
-            </TouchableOpacity>
+                </TouchableOpacity>
+            </View>
         );
     };
 
@@ -203,7 +258,7 @@ const CookBook = () => {
                             color="#E25822"
                         />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Search Recipe</Text>
+                    <Text style={styles.headerTitle}>My CookBook</Text>
                     <View style={styles.headerRightPlaceholder} />
                 </View>
                 <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -246,7 +301,7 @@ const CookBook = () => {
                             color="#E25822"
                         />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Search Recipe</Text>
+                    <Text style={styles.headerTitle}>My CookBook</Text>
                     <View style={styles.headerRightPlaceholder} />
                 </View>
 
@@ -286,6 +341,45 @@ const CookBook = () => {
                         </View>
                     }
                 />
+
+                {/* Delete Confirmation Modal */}
+                <Modal
+                    visible={showDeleteModal}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowDeleteModal(false)}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Remove Recipe</Text>
+                            <Text style={styles.modalMessage}>
+                                Are you sure you want to remove "
+                                {selectedRecipe?.name}" from your cookbook?
+                            </Text>
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => setShowDeleteModal(false)}
+                                >
+                                    <Text style={styles.cancelButtonText}>
+                                        Cancel
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.deleteButton}
+                                    onPress={() =>
+                                        handleDeleteRecipe(selectedRecipe?.id)
+                                    }
+                                >
+                                    <Text style={styles.deleteButtonText}>
+                                        Remove
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+
                 <BottomNav />
             </View>
         </SafeAreaView>
@@ -295,7 +389,7 @@ const CookBook = () => {
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
-        backgroundColor: "#fff"
+        backgroundColor: "#f8f9fa"
     },
     container: {
         flex: 1
@@ -309,22 +403,21 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        paddingHorizontal: 15,
-        paddingVertical: 15,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        backgroundColor: "#fff",
         borderBottomWidth: 1,
         borderBottomColor: "#f0f0f0",
         marginTop: Platform.OS === "android" ? 20 : 0
     },
-    backButton: {
-        padding: 5
-    },
+
     headerTitle: {
         fontSize: 20,
         fontFamily: "Galindo-Regular",
         color: "#E25822"
     },
     headerRightPlaceholder: {
-        width: 24
+        width: 40
     },
     scrollContainer: {
         flexGrow: 1,
@@ -359,7 +452,12 @@ const styles = StyleSheet.create({
         backgroundColor: "#E25822",
         paddingVertical: 15,
         paddingHorizontal: 40,
-        borderRadius: 30
+        borderRadius: 30,
+        shadowColor: "#E25822",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4
     },
     buttonText: {
         color: "white",
@@ -367,62 +465,80 @@ const styles = StyleSheet.create({
         fontSize: 18
     },
     listContent: {
-        paddingBottom: 20
+        paddingBottom: 100,
+        paddingTop: 8
     },
     recipeCard: {
+      height: 150,
         backgroundColor: "#fff",
-        borderRadius: 10,
-        marginHorizontal: 15,
-        marginBottom: 15,
+        borderRadius: 16,
+        marginHorizontal: 16,
+        marginBottom: 12,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3
-    },
-    cardImageContainer: {
-        height: 180,
-        borderTopLeftRadius: 10,
-        borderTopRightRadius: 10,
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        elevation: 3,
+        flexDirection: "row",
         overflow: "hidden"
     },
-    cardImage: {
+    imageContainer: {
+        width: 120,
+        height: "100%"
+    },
+    recipeImage: {
         width: "100%",
         height: "100%"
     },
-    cardImagePlaceholder: {
+    imagePlaceholder: {
         width: "100%",
         height: "100%",
         backgroundColor: "#f5f5f5",
         justifyContent: "center",
         alignItems: "center"
     },
-    cardContent: {
-        padding: 15
+    detailsContainer: {
+        flex: 1,
+        padding: 16,
+        justifyContent: "space-between"
     },
-    recipeName: {
-        fontSize: 18,
-        fontFamily: "Galindo-Regular",
-        color: "#333",
-        marginBottom: 8
-    },
-    recipeCategoryContainer: {
-        backgroundColor: "#E25822",
-        borderRadius: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        alignSelf: "flex-start",
-        marginBottom: 10
-    },
-    recipeCategory: {
-        fontSize: 12,
-        fontFamily: "Outfit-Variable",
-        color: "#fff"
-    },
-    timeRow: {
+    headerRow: {
         flexDirection: "row",
         justifyContent: "space-between",
-        marginBottom: 15
+        alignItems: "flex-start",
+        marginBottom: 8
+    },
+    recipeName: {
+        fontSize: 16,
+        fontFamily: "Galindo-Regular",
+        color: "#2d3748",
+        flex: 1,
+        marginRight: 8,
+        lineHeight: 20
+    },
+    menuButton: {
+        padding: 4,
+        borderRadius: 12,
+        backgroundColor: "#f7fafc"
+    },
+    categoryContainer: {
+        marginBottom: 12
+    },
+    categoryTag: {
+        fontSize: 11,
+        fontFamily: "Outfit-Variable",
+        color: "#E25822",
+        backgroundColor: "#fff2ef",
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        alignSelf: "flex-start",
+        fontWeight: "600"
+    },
+    timeContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 12
     },
     timeItem: {
         flexDirection: "row",
@@ -431,62 +547,150 @@ const styles = StyleSheet.create({
     timeText: {
         fontSize: 12,
         fontFamily: "Outfit-Variable",
-        color: "#666",
-        marginLeft: 5
+        color: "#4a5568",
+        marginLeft: 4,
+        fontWeight: "500"
     },
-    bottomRow: {
+    timeDivider: {
+        width: 1,
+        height: 14,
+        backgroundColor: "#e2e8f0",
+        marginHorizontal: 12
+    },
+    bottomSection: {
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center"
     },
-    userInfo: {
+    authorInfo: {
         flexDirection: "row",
-        alignItems: "center"
+        alignItems: "center",
+        flex: 1
     },
-    profileImage: {
-        width: 30,
-        height: 30,
-        borderRadius: 15,
+    authorImage: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
         marginRight: 8
     },
-    usernameText: {
+    authorName: {
         fontSize: 12,
         fontFamily: "Outfit-Variable",
-        color: "#666"
+        color: "#718096",
+        fontWeight: "500"
     },
-    ratingContainer: {
+    ratingSection: {
         flexDirection: "row",
         alignItems: "center"
     },
-    ratingText: {
+    starsContainer: {
+        flexDirection: "row",
+        marginRight: 6
+    },
+    ratingValue: {
         fontSize: 12,
         fontFamily: "Outfit-Variable",
-        color: "#666",
-        marginLeft: 5
+        color: "#4a5568",
+        fontWeight: "600"
     },
     emptyState: {
         alignItems: "center",
-        paddingVertical: 40,
+        paddingVertical: 60,
         paddingHorizontal: 20
     },
     emptyStateText: {
         fontSize: 16,
         fontFamily: "Outfit-Variable",
         color: "#666",
-        marginTop: 10,
-        marginBottom: 20,
+        marginTop: 16,
+        marginBottom: 24,
         textAlign: "center"
     },
     exploreButton: {
         backgroundColor: "#E25822",
         paddingVertical: 12,
         paddingHorizontal: 30,
-        borderRadius: 25
+        borderRadius: 25,
+        shadowColor: "#E25822",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4
     },
     exploreButtonText: {
         color: "white",
         fontFamily: "Galindo-Regular",
         fontSize: 16
+    },
+    // Modal styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 20
+    },
+    modalContent: {
+        backgroundColor: "#fff",
+        borderRadius: 16,
+        padding: 24,
+        width: "100%",
+        maxWidth: 400,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+        elevation: 10
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontFamily: "Galindo-Regular",
+        color: "#2d3748",
+        marginBottom: 12,
+        textAlign: "center"
+    },
+    modalMessage: {
+        fontSize: 16,
+        fontFamily: "Outfit-Variable",
+        color: "#4a5568",
+        textAlign: "center",
+        lineHeight: 22,
+        marginBottom: 24
+    },
+    modalButtons: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        gap: 12
+    },
+    cancelButton: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        backgroundColor: "#f7fafc",
+        borderWidth: 1,
+        borderColor: "#e2e8f0"
+    },
+    cancelButtonText: {
+        fontSize: 16,
+        fontFamily: "Outfit-Variable",
+        color: "#4a5568",
+        textAlign: "center",
+        fontWeight: "600"
+    },
+    deleteButton: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        backgroundColor: "#e53e3e"
+    },
+    deleteButtonText: {
+        fontSize: 16,
+        fontFamily: "Outfit-Variable",
+        color: "#fff",
+        textAlign: "center",
+        fontWeight: "600"
     }
 });
 
