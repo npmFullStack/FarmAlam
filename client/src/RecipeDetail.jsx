@@ -49,22 +49,22 @@ const RecipeDetail = ({ route }) => {
         return true;
     };
     const fetchRecipe = async () => {
-    try {
-        const token = await AsyncStorage.getItem("token");
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        
-        const response = await axios.get(
-            `http://127.0.0.1:8000/api/recipes/${recipeId}`,
-            { headers }
-        );
-        setRecipe(response.data);
-        setAverageRating(response.data.average_rating || 0);
-    } catch (error) {
-        Alert.alert("Error", "Failed to fetch recipe details.");
-    } finally {
-        setLoading(false);
-    }
-};
+        try {
+            const token = await AsyncStorage.getItem("token");
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
+
+            const response = await axios.get(
+                `http://127.0.0.1:8000/api/recipes/${recipeId}`,
+                { headers }
+            );
+            setRecipe(response.data);
+            setAverageRating(response.data.average_rating || 0);
+        } catch (error) {
+            Alert.alert("Error", "Failed to fetch recipe details.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchUserRating = async () => {
         try {
@@ -210,9 +210,24 @@ const RecipeDetail = ({ route }) => {
                         </Text>
                     </View>
 
-                    <Text style={styles.username}>
-                        By @{recipe.user?.username || "unknown"}
-                    </Text>
+                    <View style={styles.userInfo}>
+                        {recipe.user?.profile_picture ? (
+                            <Image
+                                source={{
+                                    uri: `http://127.0.0.1:8000/storage/${recipe.user.profile_picture}`
+                                }}
+                                style={styles.profileImage}
+                            />
+                        ) : (
+                            <Image
+                                source={require("../assets/images/default_profile.png")}
+                                style={styles.profileImage}
+                            />
+                        )}
+                        <Text style={styles.usernameText}>
+                            {recipe.user?.username || "unknown"}
+                        </Text>
+                    </View>
 
                     <View style={styles.timeContainer}>
                         <View style={styles.timeItem}>
@@ -352,21 +367,39 @@ const styles = StyleSheet.create({
         marginBottom: 10
     },
     category: {
-        fontSize: 16,
+        fontSize: 15,
+        fontFamily: "Outfit-Variable",
         color: "#E25822",
-        fontWeight: "600",
-        fontFamily: "Outfit-Variable"
+        backgroundColor: "#fff2ef",
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        alignSelf: "flex-start",
+        fontWeight: "600"
     },
     date: {
         fontSize: 14,
         color: "#666",
         fontFamily: "Outfit-Variable"
     },
-    username: {
-        fontSize: 16,
+    userInfo: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 10
+    },
+    profileImage: {
+        width: 30,
+        height: 30,
+        borderRadius: 50,
+        marginRight: 2.5,
+        borderWidth: 1,
+        borderColor: "#E25822"
+    },
+    usernameText: {
+        fontSize: 15,
         color: "#666",
-        marginBottom: 15,
-        fontFamily: "Outfit-Variable"
+        fontFamily: "Outfit-Variable",
+        
     },
     timeContainer: {
         flexDirection: "row",

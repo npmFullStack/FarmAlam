@@ -202,4 +202,20 @@ class RecipeController extends Controller
   $recipe->delete();
   return response()->json(["message" => "Recipe deleted successfully"]);
  }
+ 
+ public function userRecipes()
+{
+    $userId = auth()->id();
+    
+    $recipes = Recipe::where('user_id', $userId)
+        ->with(['user', 'ratings'])
+        ->withAvg('ratings as ratings_avg_rating', 'rating')
+        ->get()
+        ->map(function ($recipe) {
+            $recipe->ratings_avg_rating = (float) $recipe->ratings_avg_rating;
+            return $recipe;
+        });
+
+    return response()->json($recipes);
+}
 }

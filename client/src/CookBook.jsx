@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
         paddingTop: 8
     },
     recipeCard: {
-      height: 150,
+        height: 170,
         backgroundColor: "#fff",
         borderRadius: 16,
         marginHorizontal: 16,
@@ -571,7 +571,9 @@ const styles = StyleSheet.create({
         width: 24,
         height: 24,
         borderRadius: 12,
-        marginRight: 8
+        marginRight: 2.5,
+        borderWidth: 1,
+        borderColor: "#E25822"
     },
     authorName: {
         fontSize: 12,

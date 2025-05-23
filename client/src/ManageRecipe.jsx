@@ -26,23 +26,23 @@ const ManageRecipe = () => {
     const [visibleMenuId, setVisibleMenuId] = useState(null);
 
     const fetchUserRecipes = async () => {
-        try {
-            const token = await AsyncStorage.getItem("token");
-            const response = await axios.get(
-                "http://127.0.0.1:8000/api/recipes",
-                {
-                    headers: { Authorization: `Bearer ${token}` }
-                }
-            );
-            setRecipes(response.data);
-        } catch (error) {
-            console.error("Error fetching recipes:", error);
-            Alert.alert("Error", "Failed to fetch your recipes.");
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    };
+    try {
+        const token = await AsyncStorage.getItem("token");
+        const response = await axios.get(
+            "http://127.0.0.1:8000/api/user/recipes",  // Changed endpoint
+            {
+                headers: { Authorization: `Bearer ${token}` }
+            }
+        );
+        setRecipes(response.data);
+    } catch (error) {
+        console.error("Error fetching recipes:", error);
+        Alert.alert("Error", "Failed to fetch your recipes.");
+    } finally {
+        setLoading(false);
+        setRefreshing(false);
+    }
+};
 
     useEffect(() => {
         fetchUserRecipes();

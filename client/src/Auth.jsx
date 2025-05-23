@@ -74,7 +74,7 @@ const Auth = () => {
                 }
             );
             await AsyncStorage.setItem("token", response.data.token);
-            navigation.navigate("CookBook");
+            navigation.navigate("Account");
         } catch (error) {
             console.error('Registration error:', error.response?.data || error.message);
             if (error.response?.data?.errors) {
